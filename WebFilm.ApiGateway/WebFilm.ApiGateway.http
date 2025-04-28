@@ -1,0 +1,6 @@
+@WebFilm.ApiGateway_HostAddress = http://localhost:5055
+
+GET {{WebFilm.ApiGateway_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
