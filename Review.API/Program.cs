@@ -20,6 +20,14 @@ builder.Services.AddDbContext<ReviewDbContext>(options =>
     ));
 
 var jwtSettings = builder.Configuration.GetSection("Jwt");
+
+Console.WriteLine("JWT Key: " + jwtSettings["Key"]);
+
+if (string.IsNullOrEmpty(jwtSettings["Key"]))
+{
+    throw new Exception("JWT Key is not configured!");
+}
+
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -41,7 +49,6 @@ builder.Services.AddAuthentication(options =>
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -50,9 +57,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.UseAuthorization();
-
 app.UseAuthentication();
+
 app.UseAuthorization();
 
 app.MapControllers();

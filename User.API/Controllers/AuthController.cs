@@ -37,7 +37,7 @@ namespace User.API.Controllers
             {
                 Username = dto.Username,
                 Email = dto.Email,
-                PasswordHash = dto.Password, // Zamień na hashowanie!
+                PasswordHash = dto.Password,
                 Role = "User"
             };
 

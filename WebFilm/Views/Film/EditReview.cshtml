@@ -1,0 +1,23 @@
+﻿@model WebFilm.Models.EditReviewDto
+
+@{
+    ViewData["Title"] = "Edytuj recenzję";
+}
+
+<h2>Edytuj recenzję</h2>
+
+<form asp-action="EditReview" method="post">
+    <input type="hidden" asp-for="ReviewId" />
+    <input type="hidden" asp-for="FilmId" />
+    <div class="form-group">
+        <label for="Rating">Ocena (1-10)</label>
+        <input asp-for="Rating" type="number" min="1" max="10" class="form-control" />
+        <span asp-validation-for="Rating" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label for="Content">Treść recenzji</label>
+        <textarea asp-for="Content" class="form-control"></textarea>
+        <span asp-validation-for="Content" class="text-danger"></span>
+    </div>
+    <button type="submit" class="btn btn-primary">Zapisz zmiany</button>
+</form>

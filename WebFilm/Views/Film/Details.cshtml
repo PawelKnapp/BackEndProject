@@ -1,0 +1,47 @@
+﻿@model WebFilm.Models.FilmDetailsViewModel
+
+@{
+    ViewData["Title"] = "Szczegóły filmu";
+    var isLogged = Context.Session.GetString("JWToken") != null;
+    var currentUserId = ViewBag.CurrentUserId as int?;
+    var currentUserRole = ViewBag.CurrentUserRole as string;
+}
+
+<h2>@Model.Film.Title (@Model.Film.ReleaseYear)</h2>
+<p><b>Gatunek:</b> @Model.Film.Genre</p>
+<p><b>Opis:</b> @Model.Film.Description</p>
+
+<h3>Recenzje</h3>
+@if (Model.Reviews.Any())
+{
+    <ul>
+        @foreach (var review in Model.Reviews)
+        {
+            <li>
+                <b>@review.AuthorUsername</b> – Ocena: @review.Rating/10<br />
+                @review.Content
+                <span style="font-size:smaller;color:gray;">(@review.CreatedAt.ToString("g"))</span>
+                @if (isLogged && (review.UserId == currentUserId || currentUserRole == "Admin"))
+                {
+                    <a class="btn btn-sm btn-warning" href="@Url.Action("EditReview", "Film", new { id = review.Id, filmId = Model.Film.Id })">Edytuj</a>
+                    <form asp-action="DeleteReview" method="post" style="display:inline;">
+                        <input type="hidden" name="id" value="@review.Id" />
+                        <input type="hidden" name="filmId" value="@Model.Film.Id" />
+                        <button type="submit" class="btn btn-sm btn-danger">Usuń</button>
+                    </form>
+                }
+            </li>
+        }
+    </ul>
+}
+else
+{
+    <p>Brak recenzji dla tego filmu.</p>
+}
+
+@if (isLogged)
+{
+    <a class="btn btn-success mb-3" href="@Url.Action("AddReview", "Film", new { filmId = Model.Film.Id })">
+        Dodaj recenzję
+    </a>
+}

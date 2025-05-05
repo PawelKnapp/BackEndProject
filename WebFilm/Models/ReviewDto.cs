@@ -1,15 +1,13 @@
-﻿using User.API.Models;
-
-namespace Review.API.Models
+﻿namespace WebFilm.Models
 {
-    public class Review
+    public class ReviewDto
     {
         public int Id { get; set; }
         public int FilmId { get; set; }
         public int UserId { get; set; }
-        public User.API.Models.User User { get; set; } = default!;
         public int Rating { get; set; }
-        public string Content { get; set; } = default!;
+        public string Content { get; set; }
         public DateTime CreatedAt { get; set; }
+        public string AuthorUsername { get; set; }
     }
 }

@@ -1,32 +1,26 @@
 using Microsoft.AspNetCore.Mvc;
-using System.Diagnostics;
+using Newtonsoft.Json;
 using WebFilm.Models;
 
 namespace WebFilm.Controllers
 {
     public class HomeController : Controller
     {
-        private readonly ILogger<HomeController> _logger;
+        private readonly IHttpClientFactory _httpClientFactory;
 
-        public HomeController(ILogger<HomeController> logger)
+        public HomeController(IHttpClientFactory httpClientFactory)
         {
-            _logger = logger;
+            _httpClientFactory = httpClientFactory;
         }
 
-        public IActionResult Index()
+        public async Task<IActionResult> Index()
         {
-            return View();
-        }
-
-        public IActionResult Privacy()
-        {
-            return View();
-        }
-
-        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-        public IActionResult Error()
-        {
-            return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+            var client = _httpClientFactory.CreateClient();
+            var response = await client.GetAsync("https://localhost:7028/api/films");
+            var content = await response.Content.ReadAsStringAsync();
+            var filmList = JsonConvert.DeserializeObject<FilmListResponse>(content);
+            var films = filmList?.Items ?? new List<FilmDto>();
+            return View(films);
         }
     }
 }

@@ -2,6 +2,7 @@
 using Film.API.Data;
 using Film.API.Models;
 using Film.API.DTOs;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Film.API.Controllers
 {
@@ -60,6 +61,7 @@ namespace Film.API.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         public IActionResult Add([FromBody] AddFilmDto dto)
         {
             if (!ModelState.IsValid)
@@ -80,6 +82,7 @@ namespace Film.API.Controllers
 
 
         [HttpPut("{id}")]
+        [Authorize(Roles = "Admin")]
         public IActionResult Update(int id, [FromBody] Film.API.Models.Film updatedFilm)
         {
             var film = _context.Films.Find(id);
@@ -93,6 +96,7 @@ namespace Film.API.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
         public IActionResult Delete(int id)
         {
             var film = _context.Films.Find(id);
