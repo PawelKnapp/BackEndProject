@@ -5,6 +5,16 @@
     var isLogged = Context.Session.GetString("JWToken") != null;
     var currentUserId = ViewBag.CurrentUserId as int?;
     var currentUserRole = ViewBag.CurrentUserRole as string;
+
+    int reviewCurrentPage = ViewBag.ReviewCurrentPage;
+    int reviewTotalPages = ViewBag.ReviewTotalPages;
+    string reviewSortBy = ViewBag.ReviewSortBy as string ?? "date";
+    string reviewSortOrder = ViewBag.ReviewSortOrder as string ?? "desc";
+    int reviewWindowSize = 5;
+    int reviewStartPage = Math.Max(1, reviewCurrentPage - reviewWindowSize / 2);
+    int reviewEndPage = Math.Min(reviewTotalPages, reviewStartPage + reviewWindowSize - 1);
+    if (reviewEndPage - reviewStartPage + 1 < reviewWindowSize)
+        reviewStartPage = Math.Max(1, reviewEndPage - reviewWindowSize + 1);
 }
 
 <h2>@Model.Film.Title (@Model.Film.ReleaseYear)</h2>
@@ -12,18 +22,36 @@
 <p><b>Opis:</b> @Model.Film.Description</p>
 
 <h3>Recenzje</h3>
+
+<form method="get" class="mb-3">
+    <input type="hidden" name="id" value="@Model.Film.Id" />
+    <label>Sortuj recenzje:</label>
+    <select name="reviewSortBy" class="form-select d-inline w-auto">
+        <option value="date" selected="@(reviewSortBy=="date")">Data</option>
+        <option value="rating" selected="@(reviewSortBy=="rating")">Ocena</option>
+    </select>
+    <select name="reviewSortOrder" class="form-select d-inline w-auto">
+        <option value="desc" selected="@(reviewSortOrder=="desc")">Malejąco</option>
+        <option value="asc" selected="@(reviewSortOrder=="asc")">Rosnąco</option>
+    </select>
+    <button type="submit" class="btn btn-primary btn-sm">Sortuj</button>
+</form>
+
 @if (Model.Reviews.Any())
 {
     <ul>
         @foreach (var review in Model.Reviews)
         {
             <li>
-                <b>@review.AuthorUsername</b> – Ocena: @review.Rating/10<br />
+                <span style="font-weight:bold; color:#007bff;">Autor: @review.AuthorUsername</span> – Ocena: @review.Rating/10<br />
                 @review.Content
                 <span style="font-size:smaller;color:gray;">(@review.CreatedAt.ToString("g"))</span>
-                @if (isLogged && (review.UserId == currentUserId || currentUserRole == "Admin"))
+                @if (isLogged && review.UserId == currentUserId)
                 {
                     <a class="btn btn-sm btn-warning" href="@Url.Action("EditReview", "Film", new { id = review.Id, filmId = Model.Film.Id })">Edytuj</a>
+                }
+                @if (isLogged && (review.UserId == currentUserId || currentUserRole == "Admin"))
+                {
                     <form asp-action="DeleteReview" method="post" style="display:inline;">
                         <input type="hidden" name="id" value="@review.Id" />
                         <input type="hidden" name="filmId" value="@Model.Film.Id" />
@@ -33,6 +61,43 @@
             </li>
         }
     </ul>
+
+    <nav aria-label="Paginacja recenzji">
+        <ul class="pagination">
+            <li class="page-item @(reviewCurrentPage == 1 ? "disabled" : "")">
+                <a class="page-link" href="@Url.Action("Details", new { id = Model.Film.Id, reviewPage = reviewCurrentPage - 1, reviewSortBy = reviewSortBy, reviewSortOrder = reviewSortOrder })">Poprzednia</a>
+            </li>
+            @if (reviewStartPage > 1)
+            {
+                <li class="page-item">
+                    <a class="page-link" href="@Url.Action("Details", new { id = Model.Film.Id, reviewPage = 1, reviewSortBy = reviewSortBy, reviewSortOrder = reviewSortOrder })">1</a>
+                </li>
+                @if (reviewStartPage > 2)
+                {
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                }
+            }
+            @for (int i = reviewStartPage; i <= reviewEndPage; i++)
+            {
+                <li class="page-item @(i == reviewCurrentPage ? "active" : "")">
+                    <a class="page-link" href="@Url.Action("Details", new { id = Model.Film.Id, reviewPage = i, reviewSortBy = reviewSortBy, reviewSortOrder = reviewSortOrder })">@i</a>
+                </li>
+            }
+            @if (reviewEndPage < reviewTotalPages)
+            {
+                @if (reviewEndPage < reviewTotalPages - 1)
+                {
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                }
+                <li class="page-item">
+                    <a class="page-link" href="@Url.Action("Details", new { id = Model.Film.Id, reviewPage = reviewTotalPages, reviewSortBy = reviewSortBy, reviewSortOrder = reviewSortOrder })">@reviewTotalPages</a>
+                </li>
+            }
+            <li class="page-item @(reviewCurrentPage == reviewTotalPages ? "disabled" : "")">
+                <a class="page-link" href="@Url.Action("Details", new { id = Model.Film.Id, reviewPage = reviewCurrentPage + 1, reviewSortBy = reviewSortBy, reviewSortOrder = reviewSortOrder })">Następna</a>
+            </li>
+        </ul>
+    </nav>
 }
 else
 {

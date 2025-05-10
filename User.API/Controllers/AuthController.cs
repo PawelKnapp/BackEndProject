@@ -6,6 +6,7 @@ using System.Text;
 using User.API.Data;
 using global::User.API.Models;
 using User.API.DTOs;
+using Microsoft.AspNetCore.Identity;
 
 namespace User.API.Controllers
 {
@@ -28,18 +29,17 @@ namespace User.API.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            // Sprawdź, czy użytkownik istnieje
             if (_context.Users.Any(u => u.Username == dto.Username))
                 return BadRequest("Username already exists.");
 
-            // Hashowanie hasła (tu uproszczone)
+            var passwordHasher = new PasswordHasher<User.API.Models.User>();
             var user = new User.API.Models.User
             {
                 Username = dto.Username,
                 Email = dto.Email,
-                PasswordHash = dto.Password,
                 Role = "User"
             };
+            user.PasswordHash = passwordHasher.HashPassword(user, dto.Password);
 
             _context.Users.Add(user);
             _context.SaveChanges();
@@ -49,8 +49,13 @@ namespace User.API.Controllers
         [HttpPost("login")]
         public IActionResult Login([FromBody] LoginRequest request)
         {
-            var user = _context.Users.FirstOrDefault(u => u.Username == request.Username && u.PasswordHash == request.Password);
+            var user = _context.Users.FirstOrDefault(u => u.Username == request.Username);
             if (user == null)
+                return Unauthorized();
+
+            var passwordHasher = new PasswordHasher<User.API.Models.User>();
+            var result = passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.Password);
+            if (result != PasswordVerificationResult.Success)
                 return Unauthorized();
 
             var token = GenerateJwtToken(user);

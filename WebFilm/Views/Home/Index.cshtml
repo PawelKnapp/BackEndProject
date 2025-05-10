@@ -1,16 +1,91 @@
 ﻿@model List<WebFilm.Models.FilmDto>
-
 @{
     ViewData["Title"] = "Lista filmów";
+    var isAdmin = (ViewBag.CurrentUserRole as string) == "Admin";
+    int currentPage = ViewBag.CurrentPage;
+    int totalPages = ViewBag.TotalPages;
+    string sortBy = ViewBag.SortBy as string ?? "Title";
+    string sortOrder = ViewBag.SortOrder as string ?? "asc";
+
+    int windowSize = 5;
+    int startPage = Math.Max(1, currentPage - windowSize / 2);
+    int endPage = Math.Min(totalPages, startPage + windowSize - 1);
+    if (endPage - startPage + 1 < windowSize)
+        startPage = Math.Max(1, endPage - windowSize + 1);
 }
 
 <h2>Filmy</h2>
+
+@if (isAdmin)
+{
+    <a class="btn btn-success mb-2" href="@Url.Action("AddFilm", "Home")">Dodaj film</a>
+}
+
+<form method="get" class="mb-3">
+    <label>Sortuj według:</label>
+    <select name="sortBy" class="form-select d-inline w-auto">
+        <option value="Title" selected="@(sortBy=="Title")">Tytuł</option>
+        <option value="ReleaseYear" selected="@(sortBy=="ReleaseYear")">Rok</option>
+        <option value="Genre" selected="@(sortBy=="Genre")">Gatunek</option>
+    </select>
+    <select name="sortOrder" class="form-select d-inline w-auto">
+        <option value="asc" selected="@(sortOrder=="asc")">Rosnąco</option>
+        <option value="desc" selected="@(sortOrder=="desc")">Malejąco</option>
+    </select>
+    <button type="submit" class="btn btn-primary btn-sm">Sortuj</button>
+</form>
+
 <ul>
     @foreach (var film in Model)
     {
         <li>
             <a href="@Url.Action("Details", "Film", new { id = film.Id })">@film.Title</a>
             (@film.ReleaseYear) - @film.Genre
+            @if (isAdmin)
+            {
+                <a class="btn btn-sm btn-warning" href="@Url.Action("EditFilm", "Home", new { id = film.Id })">Edytuj</a>
+                <form asp-action="DeleteFilm" asp-controller="Home" method="post" style="display:inline;">
+                    <input type="hidden" name="id" value="@film.Id" />
+                    <button type="submit" class="btn btn-sm btn-danger">Usuń</button>
+                </form>
+            }
         </li>
     }
 </ul>
+
+<nav aria-label="Paginacja">
+    <ul class="pagination">
+        <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+            <a class="page-link" href="@Url.Action("Index", new { page = currentPage - 1, sortBy = sortBy, sortOrder = sortOrder })">Poprzednia</a>
+        </li>
+        @if (startPage > 1)
+        {
+            <li class="page-item">
+                <a class="page-link" href="@Url.Action("Index", new { page = 1, sortBy = sortBy, sortOrder = sortOrder })">1</a>
+            </li>
+            @if (startPage > 2)
+            {
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+            }
+        }
+        @for (int i = startPage; i <= endPage; i++)
+        {
+            <li class="page-item @(i == currentPage ? "active" : "")">
+                <a class="page-link" href="@Url.Action("Index", new { page = i, sortBy = sortBy, sortOrder = sortOrder })">@i</a>
+            </li>
+        }
+        @if (endPage < totalPages)
+        {
+            @if (endPage < totalPages - 1)
+            {
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+            }
+            <li class="page-item">
+                <a class="page-link" href="@Url.Action("Index", new { page = totalPages, sortBy = sortBy, sortOrder = sortOrder })">@totalPages</a>
+            </li>
+        }
+        <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+            <a class="page-link" href="@Url.Action("Index", new { page = currentPage + 1, sortBy = sortBy, sortOrder = sortOrder })">Następna</a>
+        </li>
+    </ul>
+</nav>

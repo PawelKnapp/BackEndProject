@@ -16,7 +16,12 @@ namespace WebFilm.Controllers
             _httpClientFactory = httpClientFactory;
         }
 
-        public async Task<IActionResult> Details(int id)
+        public async Task<IActionResult> Details(
+        int id,
+        int reviewPage = 1,
+        int reviewPageSize = 5,
+        string reviewSortBy = "date",
+        string reviewSortOrder = "desc")
         {
             var client = _httpClientFactory.CreateClient();
 
@@ -27,14 +32,20 @@ namespace WebFilm.Controllers
             var filmContent = await filmResponse.Content.ReadAsStringAsync();
             var film = JsonConvert.DeserializeObject<FilmDto>(filmContent);
 
-            var reviewsResponse = await client.GetAsync($"https://localhost:7028/api/reviews?filmId={id}");
+            var reviewsUrl = $"https://localhost:7028/api/reviews?filmId={id}&page={reviewPage}&pageSize={reviewPageSize}&sortBy={reviewSortBy}&sortOrder={reviewSortOrder}";
+            var reviewsResponse = await client.GetAsync(reviewsUrl);
             var reviewsContent = await reviewsResponse.Content.ReadAsStringAsync();
-            var reviews = JsonConvert.DeserializeObject<List<ReviewDto>>(reviewsContent) ?? new List<ReviewDto>();
+            var reviewsList = JsonConvert.DeserializeObject<ReviewListResponse>(reviewsContent);
+
+            ViewBag.ReviewCurrentPage = reviewsList?.Page ?? 1;
+            ViewBag.ReviewTotalPages = (int)Math.Ceiling((reviewsList?.TotalItems ?? 0) / (double)(reviewsList?.PageSize ?? 5));
+            ViewBag.ReviewSortBy = reviewSortBy;
+            ViewBag.ReviewSortOrder = reviewSortOrder;
 
             var model = new FilmDetailsViewModel
             {
                 Film = film,
-                Reviews = reviews
+                Reviews = reviewsList?.Items ?? new List<ReviewDto>()
             };
 
             var token = HttpContext.Session.GetString("JWToken");
@@ -64,6 +75,7 @@ namespace WebFilm.Controllers
 
             return View(model);
         }
+
 
         [HttpGet]
         public IActionResult AddReview(int filmId)

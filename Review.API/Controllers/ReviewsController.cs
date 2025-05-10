@@ -3,6 +3,7 @@ using Review.API.Data;
 using Review.API.Models;
 using Review.API.DTOs;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
 
 namespace Review.API.Controllers
 {
@@ -18,22 +19,70 @@ namespace Review.API.Controllers
         }
 
         [HttpGet]
-        public IActionResult GetAll([FromQuery] int? filmId)
+        public IActionResult GetAll([FromQuery] int? filmId, [FromQuery] int page = 1, [FromQuery] int pageSize = 5,
+                            [FromQuery] string sortBy = "date", [FromQuery] string sortOrder = "desc")
         {
-            var query = _context.Reviews.AsQueryable();
+            var query = _context.Reviews
+                .Include(r => r.User)
+                .AsQueryable();
+
             if (filmId.HasValue)
                 query = query.Where(r => r.FilmId == filmId.Value);
 
-            var reviews = query.ToList();
-            return Ok(reviews);
+            query = sortBy switch
+            {
+                "rating" => sortOrder == "asc" ? query.OrderBy(r => r.Rating) : query.OrderByDescending(r => r.Rating),
+                _ => sortOrder == "asc" ? query.OrderBy(r => r.CreatedAt) : query.OrderByDescending(r => r.CreatedAt)
+            };
+
+            var totalItems = query.Count();
+            var reviews = query
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(r => new ReviewDto
+                {
+                    Id = r.Id,
+                    FilmId = r.FilmId,
+                    UserId = r.UserId,
+                    AuthorUsername = r.User.Username,
+                    Rating = r.Rating,
+                    Content = r.Content,
+                    CreatedAt = r.CreatedAt
+                })
+                .ToList();
+
+            return Ok(new
+            {
+                TotalItems = totalItems,
+                Page = page,
+                PageSize = pageSize,
+                Items = reviews
+            });
         }
+
 
         [HttpGet("{id}")]
         public IActionResult GetById(int id)
         {
-            var review = _context.Reviews.Find(id);
-            if (review == null) return NotFound();
-            return Ok(review);
+            var review = _context.Reviews
+                .Include(r => r.User)
+                .FirstOrDefault(r => r.Id == id);
+
+            if (review == null)
+                return NotFound();
+
+            var dto = new ReviewDto
+            {
+                Id = review.Id,
+                FilmId = review.FilmId,
+                UserId = review.UserId,
+                AuthorUsername = review.User?.Username,
+                Rating = review.Rating,
+                Content = review.Content,
+                CreatedAt = review.CreatedAt
+            };
+
+            return Ok(dto);
         }
 
         [HttpPost]

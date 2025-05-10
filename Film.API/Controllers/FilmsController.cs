@@ -19,10 +19,11 @@ namespace Film.API.Controllers
 
         [HttpGet]
         public IActionResult GetAll(
-    [FromQuery] int page = 1,
-    [FromQuery] int pageSize = 10,
-    [FromQuery] string genre = null,
-    [FromQuery] string sortBy = "Title")
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string genre = null,
+            [FromQuery] string sortBy = "Title",
+            [FromQuery] string sortOrder = "asc")
         {
             var query = _context.Films.AsQueryable();
 
@@ -32,9 +33,9 @@ namespace Film.API.Controllers
             // Sortowanie
             query = sortBy switch
             {
-                "ReleaseYear" => query.OrderBy(f => f.ReleaseYear),
-                "Genre" => query.OrderBy(f => f.Genre),
-                _ => query.OrderBy(f => f.Title)
+                "ReleaseYear" => sortOrder == "desc" ? query.OrderByDescending(f => f.ReleaseYear) : query.OrderBy(f => f.ReleaseYear),
+                "Genre" => sortOrder == "desc" ? query.OrderByDescending(f => f.Genre) : query.OrderBy(f => f.Genre),
+                _ => sortOrder == "desc" ? query.OrderByDescending(f => f.Title) : query.OrderBy(f => f.Title)
             };
 
             // Paginacja
@@ -79,7 +80,6 @@ namespace Film.API.Controllers
             _context.SaveChanges();
             return CreatedAtAction(nameof(GetById), new { id = film.Id }, film);
         }
-
 
         [HttpPut("{id}")]
         [Authorize(Roles = "Admin")]
