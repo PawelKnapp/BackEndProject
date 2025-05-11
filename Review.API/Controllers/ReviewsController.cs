@@ -29,13 +29,15 @@ namespace Review.API.Controllers
             if (filmId.HasValue)
                 query = query.Where(r => r.FilmId == filmId.Value);
 
+            var totalItems = query.Count();
+            double averageRating = totalItems > 0 ? query.Average(r => r.Rating) : 0;
+
             query = sortBy switch
             {
                 "rating" => sortOrder == "asc" ? query.OrderBy(r => r.Rating) : query.OrderByDescending(r => r.Rating),
                 _ => sortOrder == "asc" ? query.OrderBy(r => r.CreatedAt) : query.OrderByDescending(r => r.CreatedAt)
             };
 
-            var totalItems = query.Count();
             var reviews = query
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
@@ -56,10 +58,10 @@ namespace Review.API.Controllers
                 TotalItems = totalItems,
                 Page = page,
                 PageSize = pageSize,
+                AverageRating = averageRating,
                 Items = reviews
             });
         }
-
 
         [HttpGet("{id}")]
         public IActionResult GetById(int id)

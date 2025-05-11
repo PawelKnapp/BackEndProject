@@ -15,7 +15,12 @@ namespace WebFilm.Controllers
             _httpClientFactory = httpClientFactory;
         }
 
-        public async Task<IActionResult> Index(int page = 1, int pageSize = 10, string sortBy = "Title", string sortOrder = "asc")
+        public async Task<IActionResult> Index(
+            int page = 1,
+            int pageSize = 10,
+            string sortBy = "Title",
+            string sortOrder = "asc",
+            string genre = "")
         {
             var token = HttpContext.Session.GetString("JWToken");
             string currentUserRole = null;
@@ -33,6 +38,9 @@ namespace WebFilm.Controllers
 
             var client = _httpClientFactory.CreateClient();
             var url = $"https://localhost:7028/api/films?page={page}&pageSize={pageSize}&sortBy={sortBy}&sortOrder={sortOrder}";
+            if (!string.IsNullOrEmpty(genre))
+                url += $"&genre={genre}";
+
             var response = await client.GetAsync(url);
             var content = await response.Content.ReadAsStringAsync();
             var filmList = JsonConvert.DeserializeObject<FilmListResponse>(content);
@@ -43,6 +51,16 @@ namespace WebFilm.Controllers
             ViewBag.SortOrder = sortOrder;
 
             var films = filmList?.Items ?? new List<FilmDto>();
+
+            // WYCI¥GNIJ UNIKALNE GATUNKI z pobranych filmów
+            var genres = films.Select(f => f.Genre)
+                              .Where(g => !string.IsNullOrEmpty(g))
+                              .Distinct()
+                              .OrderBy(g => g)
+                              .ToList();
+            ViewBag.Genres = genres;
+            ViewBag.SelectedGenre = genre;
+
             return View(films);
         }
 
@@ -189,6 +207,5 @@ namespace WebFilm.Controllers
         {
             return View();
         }
-
     }
 }

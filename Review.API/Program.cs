@@ -21,8 +21,6 @@ builder.Services.AddDbContext<ReviewDbContext>(options =>
 
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 
-Console.WriteLine("JWT Key: " + jwtSettings["Key"]);
-
 if (string.IsNullOrEmpty(jwtSettings["Key"]))
 {
     throw new Exception("JWT Key is not configured!");

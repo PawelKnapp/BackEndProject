@@ -1,6 +1,7 @@
 ﻿@using Microsoft.AspNetCore.Http
 @{
     var isLogged = Context.Session.GetString("JWToken") != null;
+    var username = Context.Session.GetString("Username");
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -33,6 +34,12 @@
                     <ul class="navbar-nav ms-auto">
                         @if (isLogged)
                         {
+                            @if (!string.IsNullOrEmpty(username))
+                            {
+                                <li class="nav-item d-flex align-items-center">
+                                    <span class="me-2">Zalogowany/a jako: <b>@username</b></span>
+                                </li>
+                            }
                             <li class="nav-item">
                                 <a class="nav-link text-dark" asp-controller="Account" asp-action="Logout">Wyloguj się</a>
                             </li>

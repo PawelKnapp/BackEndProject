@@ -21,3 +21,9 @@
     </div>
     <button type="submit" class="btn btn-primary">Zapisz zmiany</button>
 </form>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

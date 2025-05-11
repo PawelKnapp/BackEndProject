@@ -15,9 +15,25 @@
     int reviewEndPage = Math.Min(reviewTotalPages, reviewStartPage + reviewWindowSize - 1);
     if (reviewEndPage - reviewStartPage + 1 < reviewWindowSize)
         reviewStartPage = Math.Max(1, reviewEndPage - reviewWindowSize + 1);
+    var reviewCount = Model.Reviews?.Count ?? 0;
+    double avgRating = reviewCount > 0 ? Model.Reviews.Average(r => (double)r.Rating) : 0;
 }
 
 <h2>@Model.Film.Title (@Model.Film.ReleaseYear)</h2>
+
+@if (ViewBag.ReviewTotalCount > 0)
+{
+    <p>
+        <b>Średnia ocena:</b> @(ViewBag.ReviewAverageRating.ToString("0.00"))/10
+        <span style="color:gray;">(@ViewBag.ReviewTotalCount recenzji)</span>
+    </p>
+}
+else
+{
+    <p style="color:gray;">Brak recenzji i ocen dla tego filmu.</p>
+}
+
+
 <p><b>Gatunek:</b> @Model.Film.Genre</p>
 <p><b>Opis:</b> @Model.Film.Description</p>
 
@@ -109,4 +125,10 @@ else
     <a class="btn btn-success mb-3" href="@Url.Action("AddReview", "Film", new { filmId = Model.Film.Id })">
         Dodaj recenzję
     </a>
+}
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
 }

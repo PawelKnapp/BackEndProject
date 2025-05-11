@@ -41,6 +41,8 @@ namespace WebFilm.Controllers
             ViewBag.ReviewTotalPages = (int)Math.Ceiling((reviewsList?.TotalItems ?? 0) / (double)(reviewsList?.PageSize ?? 5));
             ViewBag.ReviewSortBy = reviewSortBy;
             ViewBag.ReviewSortOrder = reviewSortOrder;
+            ViewBag.ReviewAverageRating = reviewsList?.AverageRating ?? 0;
+            ViewBag.ReviewTotalCount = reviewsList?.TotalItems ?? 0;
 
             var model = new FilmDetailsViewModel
             {

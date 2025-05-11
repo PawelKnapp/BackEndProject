@@ -6,6 +6,7 @@
     int totalPages = ViewBag.TotalPages;
     string sortBy = ViewBag.SortBy as string ?? "Title";
     string sortOrder = ViewBag.SortOrder as string ?? "asc";
+    string selectedGenre = ViewBag.SelectedGenre as string ?? "";
 
     int windowSize = 5;
     int startPage = Math.Max(1, currentPage - windowSize / 2);
@@ -32,6 +33,14 @@
         <option value="asc" selected="@(sortOrder=="asc")">Rosnąco</option>
         <option value="desc" selected="@(sortOrder=="desc")">Malejąco</option>
     </select>
+    <label>&nbsp;Wybierz gatunek:</label>
+    <select name="genre" class="form-select d-inline w-auto">
+        <option value="" selected="@(string.IsNullOrEmpty(selectedGenre))">Wszystkie</option>
+        @foreach (var genre in ViewBag.Genres as List<string>)
+        {
+            <option value="@genre" selected="@(selectedGenre == genre)">@genre</option>
+        }
+    </select>
     <button type="submit" class="btn btn-primary btn-sm">Sortuj</button>
 </form>
 
@@ -56,12 +65,12 @@
 <nav aria-label="Paginacja">
     <ul class="pagination">
         <li class="page-item @(currentPage == 1 ? "disabled" : "")">
-            <a class="page-link" href="@Url.Action("Index", new { page = currentPage - 1, sortBy = sortBy, sortOrder = sortOrder })">Poprzednia</a>
+            <a class="page-link" href="@Url.Action("Index", new { page = currentPage - 1, sortBy = sortBy, sortOrder = sortOrder, genre = selectedGenre })">Poprzednia</a>
         </li>
         @if (startPage > 1)
         {
             <li class="page-item">
-                <a class="page-link" href="@Url.Action("Index", new { page = 1, sortBy = sortBy, sortOrder = sortOrder })">1</a>
+                <a class="page-link" href="@Url.Action("Index", new { page = 1, sortBy = sortBy, sortOrder = sortOrder, genre = selectedGenre })">1</a>
             </li>
             @if (startPage > 2)
             {
@@ -71,7 +80,7 @@
         @for (int i = startPage; i <= endPage; i++)
         {
             <li class="page-item @(i == currentPage ? "active" : "")">
-                <a class="page-link" href="@Url.Action("Index", new { page = i, sortBy = sortBy, sortOrder = sortOrder })">@i</a>
+                <a class="page-link" href="@Url.Action("Index", new { page = i, sortBy = sortBy, sortOrder = sortOrder, genre = selectedGenre })">@i</a>
             </li>
         }
         @if (endPage < totalPages)
@@ -81,11 +90,11 @@
                 <li class="page-item disabled"><span class="page-link">...</span></li>
             }
             <li class="page-item">
-                <a class="page-link" href="@Url.Action("Index", new { page = totalPages, sortBy = sortBy, sortOrder = sortOrder })">@totalPages</a>
+                <a class="page-link" href="@Url.Action("Index", new { page = totalPages, sortBy = sortBy, sortOrder = sortOrder, genre = selectedGenre })">@totalPages</a>
             </li>
         }
         <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
-            <a class="page-link" href="@Url.Action("Index", new { page = currentPage + 1, sortBy = sortBy, sortOrder = sortOrder })">Następna</a>
+            <a class="page-link" href="@Url.Action("Index", new { page = currentPage + 1, sortBy = sortBy, sortOrder = sortOrder, genre = selectedGenre })">Następna</a>
         </li>
     </ul>
 </nav>
