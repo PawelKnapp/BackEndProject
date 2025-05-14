@@ -2,6 +2,7 @@
 using WebFilm.Models;
 using Newtonsoft.Json;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace WebFilm.Controllers
 {
@@ -85,7 +86,6 @@ namespace WebFilm.Controllers
             }
         }
 
-
         [HttpGet]
         public IActionResult Login()
         {
@@ -120,6 +120,137 @@ namespace WebFilm.Controllers
             HttpContext.Session.Remove("JWToken");
             HttpContext.Session.Remove("Username");
             return RedirectToAction("Index", "Home");
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Settings()
+        {
+            var token = HttpContext.Session.GetString("JWToken");
+            if (string.IsNullOrEmpty(token))
+                return RedirectToAction("Login");
+
+            var client = _httpClientFactory.CreateClient();
+            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+            var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+            var jwt = handler.ReadJwtToken(token);
+            var userIdClaim = jwt.Claims.FirstOrDefault(c => c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier");
+            if (userIdClaim == null)
+                return RedirectToAction("Login");
+
+            int userId = int.Parse(userIdClaim.Value);
+
+            var response = await client.GetAsync($"https://localhost:7028/api/users/{userId}");
+            if (!response.IsSuccessStatusCode)
+                return RedirectToAction("Login");
+
+            var userContent = await response.Content.ReadAsStringAsync();
+            var user = Newtonsoft.Json.JsonConvert.DeserializeObject<AccountSettingsViewModel>(userContent);
+
+            return View(user);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> ChangeEmail(string NewEmail, string CurrentPassword)
+        {
+            var token = HttpContext.Session.GetString("JWToken");
+            if (token == null)
+                return RedirectToAction("Login");
+
+            if (!string.IsNullOrWhiteSpace(NewEmail))
+            {
+                try
+                {
+                    var addr = new System.Net.Mail.MailAddress(NewEmail);
+                }
+                catch
+                {
+                    TempData["ErrorChangeEmail"] = "Podaj poprawny adres e-mail zgodny ze strukturą adresu email.";
+                    return RedirectToAction("Settings");
+                }
+            }
+
+            var client = _httpClientFactory.CreateClient();
+            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+            var dto = new { NewEmail, CurrentPassword };
+            var json = Newtonsoft.Json.JsonConvert.SerializeObject(dto);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var response = await client.PostAsync("https://localhost:7028/api/auth/change-email", content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                HttpContext.Session.Remove("JWToken");
+                HttpContext.Session.Remove("Username");
+                return RedirectToAction("Login");
+            }
+            else
+            {
+                TempData["ErrorChangeEmail"] = await response.Content.ReadAsStringAsync();
+                return RedirectToAction("Settings");
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> ChangeUsername(string NewUsername, string CurrentPassword)
+        {
+            var token = HttpContext.Session.GetString("JWToken");
+            if (token == null)
+                return RedirectToAction("Login");
+
+            var client = _httpClientFactory.CreateClient();
+            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+            var dto = new { NewUsername, CurrentPassword };
+            var json = Newtonsoft.Json.JsonConvert.SerializeObject(dto);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var response = await client.PostAsync("https://localhost:7028/api/auth/change-username", content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadAsStringAsync();
+                var obj = Newtonsoft.Json.Linq.JObject.Parse(result);
+                var newUsername = (string)obj["Username"];
+                if (!string.IsNullOrEmpty(newUsername))
+                    HttpContext.Session.SetString("Username", newUsername);
+
+                HttpContext.Session.Remove("JWToken");
+                HttpContext.Session.Remove("Username");
+                return RedirectToAction("Login");
+            }
+            else
+            {
+                TempData["ErrorChangeUsername"] = await response.Content.ReadAsStringAsync();
+                return RedirectToAction("Settings");
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> ChangePassword(string CurrentPassword, string NewPassword)
+        {
+            var token = HttpContext.Session.GetString("JWToken");
+            if (token == null)
+                return RedirectToAction("Login");
+
+            var client = _httpClientFactory.CreateClient();
+            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+            var dto = new { CurrentPassword, NewPassword };
+            var json = Newtonsoft.Json.JsonConvert.SerializeObject(dto);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var response = await client.PostAsync("https://localhost:7028/api/auth/change-password", content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                HttpContext.Session.Remove("JWToken");
+                HttpContext.Session.Remove("Username");
+                return RedirectToAction("Login");
+            }
+            else
+            {
+                TempData["ErrorChangePassword"] = await response.Content.ReadAsStringAsync();
+                return RedirectToAction("Settings");
+            }
         }
     }
 }

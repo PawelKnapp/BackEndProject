@@ -40,13 +40,14 @@
                             @if (!string.IsNullOrEmpty(username))
                             {
                                 <li class="nav-item d-flex align-items-center">
-                                    <span class="me-2">Zalogowany/a jako: <b>@username</b></span>
+                                    <a class="nav-link text-dark" asp-controller="Account" asp-action="Settings"><b>@username</b></a>
                                 </li>
                             }
                             <li class="nav-item">
                                 <a class="nav-link text-dark" asp-controller="Account" asp-action="Logout">Wyloguj się</a>
                             </li>
                         }
+
                         else
                         {
                             <li class="nav-item">

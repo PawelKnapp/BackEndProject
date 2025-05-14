@@ -1,0 +1,62 @@
+﻿@model WebFilm.Models.AccountSettingsViewModel
+
+<h2>Ustawienia konta</h2>
+
+<h4>Zmiana e-maila</h4>
+@if (TempData["ErrorChangeEmail"] != null)
+{
+    <div class="alert alert-danger">@TempData["ErrorChangeEmail"]</div>
+}
+<p><b>Aktualny e-mail:</b> @Model.Email</p>
+<form asp-action="ChangeEmail" method="post" autocomplete="off">
+    <input type="email" name="NewEmail" class="form-control mb-2" placeholder="Nowy e-mail" />
+    <input type="password" name="CurrentPassword" class="form-control mb-2" placeholder="Aktualne hasło" />
+    <div class="alert alert-warning mt-2 d-none warning-message">
+        Uwaga! Po zapisaniu zmian zostaniesz wylogowany!
+    </div>
+    <button type="submit" class="btn btn-primary">Zmień e-mail</button>
+</form>
+
+<h4 class="mt-4">Zmiana nazwy użytkownika</h4>
+@if (TempData["ErrorChangeUsername"] != null)
+{
+    <div class="alert alert-danger">@TempData["ErrorChangeUsername"]</div>
+}
+<p><b>Aktualna nazwa użytkownika:</b> @Model.Username</p>
+<form asp-action="ChangeUsername" method="post" autocomplete="off">
+    <input type="text" name="NewUsername" class="form-control mb-2" placeholder="Nowa nazwa użytkownika" />
+    <input type="password" name="CurrentPassword" class="form-control mb-2" placeholder="Aktualne hasło" />
+    <div class="alert alert-warning mt-2 d-none warning-message">
+        Uwaga! Po zapisaniu zmian zostaniesz wylogowany!
+    </div>
+    <button type="submit" class="btn btn-primary">Zmień nazwę użytkownika</button>
+</form>
+
+<h4 class="mt-4">Zmiana hasła</h4>
+@if (TempData["ErrorChangePassword"] != null)
+{
+    <div class="alert alert-danger">@TempData["ErrorChangePassword"]</div>
+}
+<form asp-action="ChangePassword" method="post" autocomplete="off">
+    <input type="password" name="NewPassword" class="form-control mb-2" placeholder="Nowe hasło" />
+    <input type="password" name="CurrentPassword" class="form-control mb-2" placeholder="Aktualne hasło" />
+    <div class="alert alert-warning mt-2 d-none warning-message">
+        Uwaga! Po zapisaniu zmian zostaniesz wylogowany!
+    </div>
+    <button type="submit" class="btn btn-primary">Zmień hasło</button>
+</form>
+
+@section Scripts {
+    <script>
+        document.querySelectorAll('form input').forEach(input => {
+            input.addEventListener('focus', function () {
+                var form = input.closest('form');
+                var warning = form.querySelector('.warning-message');
+                if (warning) warning.classList.remove('d-none');
+            });
+        });
+    </script>
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

@@ -7,6 +7,7 @@ using User.API.Data;
 using global::User.API.Models;
 using User.API.DTOs;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Authorization;
 
 namespace User.API.Controllers
 {
@@ -85,6 +86,90 @@ namespace User.API.Controllers
 
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
+
+        [Authorize]
+        [HttpPost("change-email")]
+        public IActionResult ChangeEmail([FromBody] ChangeEmailDto dto)
+        {
+            var userIdStr = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdStr, out int userId))
+                return Unauthorized();
+
+            var user = _context.Users.FirstOrDefault(u => u.Id == userId);
+            if (user == null)
+                return NotFound();
+
+            var passwordHasher = new PasswordHasher<User.API.Models.User>();
+            var result = passwordHasher.VerifyHashedPassword(user, user.PasswordHash, dto.CurrentPassword);
+            if (result != PasswordVerificationResult.Success)
+                return BadRequest("Invalid current password.");
+
+            if (_context.Users.Any(u => u.Email == dto.NewEmail))
+                return BadRequest("Email already in use.");
+
+            user.Email = dto.NewEmail;
+            _context.SaveChanges();
+            return Ok(new { Email = user.Email });
+        }
+
+        [Authorize]
+        [HttpPost("change-username")]
+        public IActionResult ChangeUsername([FromBody] ChangeUsernameDto dto)
+        {
+            var userIdStr = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdStr, out int userId))
+                return Unauthorized();
+
+            var user = _context.Users.FirstOrDefault(u => u.Id == userId);
+            if (user == null)
+                return NotFound();
+
+            var passwordHasher = new PasswordHasher<User.API.Models.User>();
+            var result = passwordHasher.VerifyHashedPassword(user, user.PasswordHash, dto.CurrentPassword);
+            if (result != PasswordVerificationResult.Success)
+                return BadRequest("Invalid current password.");
+
+            if (_context.Users.Any(u => u.Username == dto.NewUsername))
+                return BadRequest("Username already in use.");
+
+            user.Username = dto.NewUsername;
+            _context.SaveChanges();
+            return Ok(new { Username = user.Username });
+        }
+
+        [Authorize]
+        [HttpPost("change-password")]
+        public IActionResult ChangePassword([FromBody] ChangePasswordDto dto)
+        {
+            var userIdStr = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdStr, out int userId))
+                return Unauthorized();
+
+            var user = _context.Users.FirstOrDefault(u => u.Id == userId);
+            if (user == null)
+                return NotFound();
+
+            var passwordHasher = new PasswordHasher<User.API.Models.User>();
+            var result = passwordHasher.VerifyHashedPassword(user, user.PasswordHash, dto.CurrentPassword);
+            if (result != PasswordVerificationResult.Success)
+                return BadRequest("Invalid current password.");
+
+            user.PasswordHash = passwordHasher.HashPassword(user, dto.NewPassword);
+            _context.SaveChanges();
+            return Ok();
+        }
+
+        [Authorize]
+        [HttpGet("{id}")]
+        public IActionResult GetUser(int id)
+        {
+            var user = _context.Users.FirstOrDefault(u => u.Id == id);
+            if (user == null)
+                return NotFound();
+
+            return Ok(new { Username = user.Username, Email = user.Email });
+        }
+
     }
 
     public class LoginRequest
