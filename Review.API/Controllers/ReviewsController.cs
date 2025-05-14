@@ -44,7 +44,7 @@ namespace Review.API.Controllers
                     Id = r.Id,
                     FilmId = r.FilmId,
                     UserId = r.UserId,
-                    AuthorUsername = null, // lub "" albo r.UserId.ToString()
+                    AuthorUsername =  r.UserId.ToString(),
                     Rating = r.Rating,
                     Content = r.Content,
                     CreatedAt = r.CreatedAt
@@ -149,5 +149,41 @@ namespace Review.API.Controllers
             _context.SaveChanges();
             return NoContent();
         }
+
+        [HttpGet("user")]
+        [Authorize]
+        public IActionResult GetUserReviews()
+        {
+            var userIdStr = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdStr, out int userId))
+                return Unauthorized();
+
+            var query = _context.Reviews.Where(r => r.UserId == userId);
+
+            var totalItems = query.Count();
+
+            var reviews = query
+                .OrderByDescending(r => r.CreatedAt)
+                .Select(r => new ReviewDto
+                {
+                    Id = r.Id,
+                    FilmId = r.FilmId,
+                    UserId = r.UserId,
+                    AuthorUsername = r.UserId.ToString(),
+                    Rating = r.Rating,
+                    Content = r.Content,
+                    CreatedAt = r.CreatedAt
+                })
+                .ToList();
+
+            return Ok(new
+            {
+                TotalItems = totalItems,
+                Page = 1,
+                PageSize = totalItems,
+                Items = reviews
+            });
+        }
+
     }
 }

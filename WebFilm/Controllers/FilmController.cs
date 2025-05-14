@@ -25,7 +25,6 @@ namespace WebFilm.Controllers
         {
             var client = _httpClientFactory.CreateClient();
 
-            // Pobierz dane filmu
             var filmResponse = await client.GetAsync($"https://localhost:7028/api/films/{id}");
             if (!filmResponse.IsSuccessStatusCode)
                 return NotFound();
@@ -33,16 +32,12 @@ namespace WebFilm.Controllers
             var filmContent = await filmResponse.Content.ReadAsStringAsync();
             var film = JsonConvert.DeserializeObject<FilmDto>(filmContent);
 
-            // Pobierz recenzje filmu
             var reviewsUrl = $"https://localhost:7028/api/reviews?filmId={id}&page={reviewPage}&pageSize={reviewPageSize}&sortBy={reviewSortBy}&sortOrder={reviewSortOrder}";
             var reviewsResponse = await client.GetAsync(reviewsUrl);
             var reviewsContent = await reviewsResponse.Content.ReadAsStringAsync();
             var reviewsList = JsonConvert.DeserializeObject<ReviewListResponse>(reviewsContent);
 
-            // Pobierz unikalne UserId z recenzji
             var userIds = reviewsList?.Items.Select(r => r.UserId).Distinct().ToList() ?? new List<int>();
-
-            // Pobierz dane użytkowników z User.API (endpoint: /api/users?ids=1,2,3)
             List<UserDto> users = new();
             if (userIds.Any())
             {
@@ -53,10 +48,8 @@ namespace WebFilm.Controllers
                     users = JsonConvert.DeserializeObject<List<UserDto>>(usersContent);
                 }
             }
-            // Słownik UserId -> Username
             var userDict = users.ToDictionary(u => u.Id, u => u.Username);
 
-            // Uzupełnij AuthorUsername w recenzjach
             foreach (var review in reviewsList.Items)
             {
                 review.AuthorUsername = userDict.ContainsKey(review.UserId) ? userDict[review.UserId] : "Nieznany użytkownik";
@@ -114,6 +107,7 @@ namespace WebFilm.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> AddReview(AddReviewDto dto)
         {
             if (HttpContext.Session.GetString("JWToken") == null)
@@ -124,7 +118,7 @@ namespace WebFilm.Controllers
 
             var client = _httpClientFactory.CreateClient();
             var token = HttpContext.Session.GetString("JWToken");
-            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
             var json = JsonConvert.SerializeObject(dto);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
@@ -168,6 +162,7 @@ namespace WebFilm.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> EditReview(EditReviewDto dto)
         {
             if (HttpContext.Session.GetString("JWToken") == null)
@@ -190,10 +185,11 @@ namespace WebFilm.Controllers
                 return View(dto);
             }
 
-            return RedirectToAction("Details", new { id = dto.FilmId });
+            return Content("<script>history.go(-2);</script>", "text/html");
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteReview(int id, int filmId)
         {
             if (HttpContext.Session.GetString("JWToken") == null)
@@ -205,7 +201,7 @@ namespace WebFilm.Controllers
 
             var response = await client.DeleteAsync($"https://localhost:7028/api/reviews/{id}");
 
-            return RedirectToAction("Details", new { id = filmId });
+            return Content("<script>history.go(-2);</script>", "text/html");
         }
     }
 }

@@ -6,6 +6,6 @@
         public int Page { get; set; }
         public int PageSize { get; set; }
         public double AverageRating { get; set; }
-        public List<ReviewDto> Items { get; set; }
+        public List<ReviewDto> Items { get; set; } = new List<ReviewDto>();
     }
 }

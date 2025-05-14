@@ -1,0 +1,70 @@
+﻿@model List<WebFilm.Models.ReviewDto>
+@{
+    int currentPage = ViewBag.CurrentPage;
+    int totalPages = ViewBag.TotalPages;
+    int? selectedFilmId = ViewBag.SelectedFilmId as int?;
+    var films = ViewBag.Films as List<WebFilm.Models.FilmDto> ?? new();
+}
+
+<h2>Moje recenzje</h2>
+
+<form method="get" class="mb-3">
+    <label>Filtruj po filmie:</label>
+    <select name="filmId" class="form-select d-inline w-auto" onchange="this.form.submit()">
+        <option value="">Wszystkie filmy</option>
+        @foreach (var film in films)
+        {
+            if (selectedFilmId == film.Id)
+            {
+                <option value="@film.Id" selected>@film.Title</option>
+            }
+            else
+            {
+                <option value="@film.Id">@film.Title</option>
+            }
+        }
+    </select>
+</form>
+
+@if (Model.Any())
+{
+    <ul>
+        @foreach (var rec in Model)
+        {
+            var filmTitle = films.FirstOrDefault(f => f.Id == rec.FilmId)?.Title ?? "Nieznany film";
+            <li class="mb-3">
+                <b>@filmTitle</b><br />
+                Ocena: @rec.Rating/10<br />
+                @rec.Content<br />
+                <span style="color:gray;">(@rec.CreatedAt.ToString("g"))</span><br />
+                <a class="btn btn-sm btn-warning" href="@Url.Action("EditReview", "Film", new { id = rec.Id, filmId = rec.FilmId })">Edytuj</a>
+                <form asp-action="DeleteReview" asp-controller="Film" method="post" style="display:inline;">
+                    <input type="hidden" name="id" value="@rec.Id" />
+                    <input type="hidden" name="filmId" value="@rec.FilmId" />
+                    <button type="submit" class="btn btn-sm btn-danger">Usuń</button>
+                </form>
+            </li>
+        }
+    </ul>
+
+    <nav aria-label="Paginacja recenzji">
+        <ul class="pagination">
+            <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                <a class="page-link" href="@Url.Action("MojeRecenzje", new { page = currentPage - 1, filmId = selectedFilmId })">Poprzednia</a>
+            </li>
+            @for (int i = 1; i <= totalPages; i++)
+            {
+                <li class="page-item @(i == currentPage ? "active" : "")">
+                    <a class="page-link" href="@Url.Action("MojeRecenzje", new { page = i, filmId = selectedFilmId })">@i</a>
+                </li>
+            }
+            <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                <a class="page-link" href="@Url.Action("MojeRecenzje", new { page = currentPage + 1, filmId = selectedFilmId })">Następna</a>
+            </li>
+        </ul>
+    </nav>
+}
+else
+{
+    <p>Nie masz jeszcze żadnych recenzji.</p>
+}
