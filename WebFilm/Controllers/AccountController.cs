@@ -21,7 +21,6 @@ namespace WebFilm.Controllers
         }
 
         [HttpPost]
-        [HttpPost]
         public async Task<IActionResult> Register(RegisterViewModel model)
         {
             if (!ModelState.IsValid)
@@ -59,6 +58,7 @@ namespace WebFilm.Controllers
 
                     if (!string.IsNullOrEmpty(token))
                     {
+                        HttpContext.Session.SetString("Username", model.Username);
                         HttpContext.Session.SetString("JWToken", token);
                         TempData["Success"] = "Rejestracja zakończona sukcesem. Zostałeś automatycznie zalogowany.";
                         return RedirectToAction("Index", "Home");

@@ -30,7 +30,6 @@ namespace Film.API.Controllers
             if (!string.IsNullOrEmpty(genre))
                 query = query.Where(f => f.Genre == genre);
 
-            // Sortowanie
             query = sortBy switch
             {
                 "ReleaseYear" => sortOrder == "desc" ? query.OrderByDescending(f => f.ReleaseYear) : query.OrderBy(f => f.ReleaseYear),
@@ -38,7 +37,6 @@ namespace Film.API.Controllers
                 _ => sortOrder == "desc" ? query.OrderByDescending(f => f.Title) : query.OrderBy(f => f.Title)
             };
 
-            // Paginacja
             var totalItems = query.Count();
             var films = query.Skip((page - 1) * pageSize).Take(pageSize).ToList();
 

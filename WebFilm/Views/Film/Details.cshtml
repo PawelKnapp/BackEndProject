@@ -15,8 +15,6 @@
     int reviewEndPage = Math.Min(reviewTotalPages, reviewStartPage + reviewWindowSize - 1);
     if (reviewEndPage - reviewStartPage + 1 < reviewWindowSize)
         reviewStartPage = Math.Max(1, reviewEndPage - reviewWindowSize + 1);
-    var reviewCount = Model.Reviews?.Count ?? 0;
-    double avgRating = reviewCount > 0 ? Model.Reviews.Average(r => (double)r.Rating) : 0;
 }
 
 <h2>@Model.Film.Title (@Model.Film.ReleaseYear)</h2>
@@ -32,7 +30,6 @@ else
 {
     <p style="color:gray;">Brak recenzji i ocen dla tego filmu.</p>
 }
-
 
 <p><b>Gatunek:</b> @Model.Film.Genre</p>
 <p><b>Opis:</b> @Model.Film.Description</p>

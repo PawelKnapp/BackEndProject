@@ -20,11 +20,9 @@ namespace Review.API.Controllers
 
         [HttpGet]
         public IActionResult GetAll([FromQuery] int? filmId, [FromQuery] int page = 1, [FromQuery] int pageSize = 5,
-                            [FromQuery] string sortBy = "date", [FromQuery] string sortOrder = "desc")
+                    [FromQuery] string sortBy = "date", [FromQuery] string sortOrder = "desc")
         {
-            var query = _context.Reviews
-                .Include(r => r.User)
-                .AsQueryable();
+            var query = _context.Reviews.AsQueryable();
 
             if (filmId.HasValue)
                 query = query.Where(r => r.FilmId == filmId.Value);
@@ -46,7 +44,7 @@ namespace Review.API.Controllers
                     Id = r.Id,
                     FilmId = r.FilmId,
                     UserId = r.UserId,
-                    AuthorUsername = r.User.Username,
+                    AuthorUsername = null, // lub "" albo r.UserId.ToString()
                     Rating = r.Rating,
                     Content = r.Content,
                     CreatedAt = r.CreatedAt
@@ -63,12 +61,11 @@ namespace Review.API.Controllers
             });
         }
 
+
         [HttpGet("{id}")]
         public IActionResult GetById(int id)
         {
-            var review = _context.Reviews
-                .Include(r => r.User)
-                .FirstOrDefault(r => r.Id == id);
+            var review = _context.Reviews.FirstOrDefault(r => r.Id == id);
 
             if (review == null)
                 return NotFound();
@@ -78,7 +75,7 @@ namespace Review.API.Controllers
                 Id = review.Id,
                 FilmId = review.FilmId,
                 UserId = review.UserId,
-                AuthorUsername = review.User?.Username,
+                AuthorUsername = review.UserId.ToString(),
                 Rating = review.Rating,
                 Content = review.Content,
                 CreatedAt = review.CreatedAt
@@ -86,6 +83,7 @@ namespace Review.API.Controllers
 
             return Ok(dto);
         }
+
 
         [HttpPost]
         [Authorize]

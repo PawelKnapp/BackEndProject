@@ -17,14 +17,15 @@ namespace WebFilm.Controllers
         }
 
         public async Task<IActionResult> Details(
-        int id,
-        int reviewPage = 1,
-        int reviewPageSize = 5,
-        string reviewSortBy = "date",
-        string reviewSortOrder = "desc")
+            int id,
+            int reviewPage = 1,
+            int reviewPageSize = 5,
+            string reviewSortBy = "date",
+            string reviewSortOrder = "desc")
         {
             var client = _httpClientFactory.CreateClient();
 
+            // Pobierz dane filmu
             var filmResponse = await client.GetAsync($"https://localhost:7028/api/films/{id}");
             if (!filmResponse.IsSuccessStatusCode)
                 return NotFound();
@@ -32,10 +33,34 @@ namespace WebFilm.Controllers
             var filmContent = await filmResponse.Content.ReadAsStringAsync();
             var film = JsonConvert.DeserializeObject<FilmDto>(filmContent);
 
+            // Pobierz recenzje filmu
             var reviewsUrl = $"https://localhost:7028/api/reviews?filmId={id}&page={reviewPage}&pageSize={reviewPageSize}&sortBy={reviewSortBy}&sortOrder={reviewSortOrder}";
             var reviewsResponse = await client.GetAsync(reviewsUrl);
             var reviewsContent = await reviewsResponse.Content.ReadAsStringAsync();
             var reviewsList = JsonConvert.DeserializeObject<ReviewListResponse>(reviewsContent);
+
+            // Pobierz unikalne UserId z recenzji
+            var userIds = reviewsList?.Items.Select(r => r.UserId).Distinct().ToList() ?? new List<int>();
+
+            // Pobierz dane użytkowników z User.API (endpoint: /api/users?ids=1,2,3)
+            List<UserDto> users = new();
+            if (userIds.Any())
+            {
+                var usersResponse = await client.GetAsync($"https://localhost:7028/api/users?ids={string.Join(",", userIds)}");
+                if (usersResponse.IsSuccessStatusCode)
+                {
+                    var usersContent = await usersResponse.Content.ReadAsStringAsync();
+                    users = JsonConvert.DeserializeObject<List<UserDto>>(usersContent);
+                }
+            }
+            // Słownik UserId -> Username
+            var userDict = users.ToDictionary(u => u.Id, u => u.Username);
+
+            // Uzupełnij AuthorUsername w recenzjach
+            foreach (var review in reviewsList.Items)
+            {
+                review.AuthorUsername = userDict.ContainsKey(review.UserId) ? userDict[review.UserId] : "Nieznany użytkownik";
+            }
 
             ViewBag.ReviewCurrentPage = reviewsList?.Page ?? 1;
             ViewBag.ReviewTotalPages = (int)Math.Ceiling((reviewsList?.TotalItems ?? 0) / (double)(reviewsList?.PageSize ?? 5));
@@ -56,7 +81,7 @@ namespace WebFilm.Controllers
 
             if (!string.IsNullOrEmpty(token))
             {
-                var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+                var handler = new JwtSecurityTokenHandler();
                 var jwt = handler.ReadJwtToken(token);
 
                 var idClaim = jwt.Claims.FirstOrDefault(c =>
@@ -77,7 +102,6 @@ namespace WebFilm.Controllers
 
             return View(model);
         }
-
 
         [HttpGet]
         public IActionResult AddReview(int filmId)
