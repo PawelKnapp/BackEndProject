@@ -1,8 +1,10 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using WebFilm.Models;
 using Newtonsoft.Json;
+using System.Net.Http.Headers;
 using System.Text;
-using System.Threading.Tasks;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using WebFilm.Models;
 
 namespace WebFilm.Controllers
 {
@@ -13,6 +15,58 @@ namespace WebFilm.Controllers
         public AccountController(IHttpClientFactory httpClientFactory)
         {
             _httpClientFactory = httpClientFactory;
+        }
+
+        [HttpGet]
+        public IActionResult Login()
+        {
+            return View();
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> Login(LoginDto dto)
+        {
+            if (!ModelState.IsValid)
+                return View(dto);
+
+            var client = _httpClientFactory.CreateClient();
+            var json = JsonConvert.SerializeObject(dto);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var response = await client.PostAsync("https://localhost:7028/api/auth/login", content);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                ViewBag.Error = "Nieprawidłowa nazwa użytkownika lub hasło.";
+                return View(dto);
+            }
+
+            var responseContent = await response.Content.ReadAsStringAsync();
+            var tokenObj = JsonConvert.DeserializeObject<dynamic>(responseContent);
+            string token = tokenObj?.token ?? tokenObj?.Token;
+
+            if (string.IsNullOrEmpty(token))
+            {
+                ViewBag.Error = "Błąd logowania: brak tokena w odpowiedzi.";
+                return View(dto);
+            }
+
+            HttpContext.Session.SetString("JWToken", token);
+
+            var handler = new JwtSecurityTokenHandler();
+            var jwt = handler.ReadJwtToken(token);
+
+            var usernameClaim = jwt.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name);
+            if (usernameClaim != null)
+                HttpContext.Session.SetString("Username", usernameClaim.Value);
+
+            var roleClaim = jwt.Claims.FirstOrDefault(c =>
+                c.Type == "role" ||
+                c.Type == ClaimTypes.Role ||
+                c.Type == "http://schemas.microsoft.com/ws/2008/06/identity/claims/role");
+            if (roleClaim != null)
+                HttpContext.Session.SetString("UserRole", roleClaim.Value);
+
+            return RedirectToAction("Index", "Home");
         }
 
         [HttpGet]
@@ -28,98 +82,62 @@ namespace WebFilm.Controllers
                 return View(model);
 
             var client = _httpClientFactory.CreateClient();
-
-            var dto = new RegisterDto
-            {
-                Username = model.Username,
-                Email = model.Email,
-                Password = model.Password
-            };
-
-            var json = JsonConvert.SerializeObject(dto);
+            var json = JsonConvert.SerializeObject(model);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
             var response = await client.PostAsync("https://localhost:7028/api/auth/register", content);
 
-            if (response.IsSuccessStatusCode)
+            if (!response.IsSuccessStatusCode)
             {
-                var loginDto = new LoginRequest
-                {
-                    Username = model.Username,
-                    Password = model.Password
-                };
-                var loginJson = JsonConvert.SerializeObject(loginDto);
-                var loginContent = new StringContent(loginJson, Encoding.UTF8, "application/json");
-                var loginResponse = await client.PostAsync("https://localhost:7028/api/auth/login", loginContent);
-
-                if (loginResponse.IsSuccessStatusCode)
-                {
-                    var loginResult = await loginResponse.Content.ReadAsStringAsync();
-                    var tokenObj = Newtonsoft.Json.Linq.JObject.Parse(loginResult);
-                    var token = tokenObj["Token"]?.ToString() ?? tokenObj["token"]?.ToString();
-
-                    if (!string.IsNullOrEmpty(token))
-                    {
-                        HttpContext.Session.SetString("Username", model.Username);
-                        HttpContext.Session.SetString("JWToken", token);
-                        TempData["Success"] = "Rejestracja zakończona sukcesem. Zostałeś automatycznie zalogowany.";
-                        return RedirectToAction("Index", "Home");
-                    }
-                    else
-                    {
-                        var loginError = loginResult;
-                        TempData["Error"] = "Rejestracja zakończona sukcesem, ale nie udało się automatycznie zalogować: " + loginError;
-                        return RedirectToAction("Login");
-                    }
-                }
-                else
-                {
-                    var loginError = await loginResponse.Content.ReadAsStringAsync();
-                    TempData["Error"] = "Rejestracja zakończona sukcesem, ale nie udało się automatycznie zalogować: " + loginError;
-                    return RedirectToAction("Login");
-                }
-            }
-            else
-            {
-                var errorMsg = await response.Content.ReadAsStringAsync();
-                TempData["Error"] = "Nie udało się zarejestrować: " + errorMsg;
+                ViewBag.Error = await response.Content.ReadAsStringAsync();
                 return View(model);
             }
+
+            // Automatyczne logowanie po rejestracji
+            var loginDto = new LoginDto { Username = model.Username, Password = model.Password };
+            var loginJson = JsonConvert.SerializeObject(loginDto);
+            var loginContent = new StringContent(loginJson, Encoding.UTF8, "application/json");
+            var loginResponse = await client.PostAsync("https://localhost:7028/api/auth/login", loginContent);
+
+            if (loginResponse.IsSuccessStatusCode)
+            {
+                var loginResponseContent = await loginResponse.Content.ReadAsStringAsync();
+                var tokenObj = JsonConvert.DeserializeObject<dynamic>(loginResponseContent);
+                string token = tokenObj?.Token;
+
+                if (!string.IsNullOrEmpty(token))
+                {
+                    HttpContext.Session.SetString("JWToken", token);
+
+                    var handler = new JwtSecurityTokenHandler();
+                    var jwt = handler.ReadJwtToken(token);
+
+                    var usernameClaim = jwt.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name);
+                    if (usernameClaim != null)
+                        HttpContext.Session.SetString("Username", usernameClaim.Value);
+
+                    var roleClaim = jwt.Claims.FirstOrDefault(c =>
+                        c.Type == "role" ||
+                        c.Type == ClaimTypes.Role ||
+                        c.Type == "http://schemas.microsoft.com/ws/2008/06/identity/claims/role");
+                    if (roleClaim != null)
+                        HttpContext.Session.SetString("UserRole", roleClaim.Value);
+
+                    TempData["Success"] = "Rejestracja zakończona sukcesem. Zostałeś automatycznie zalogowany.";
+                    return RedirectToAction("Index", "Home");
+                }
+            }
+
+            TempData["Success"] = "Rejestracja zakończona sukcesem. Zaloguj się.";
+            return RedirectToAction("Login");
         }
 
         [HttpGet]
-        public IActionResult Login()
-        {
-            return View();
-        }
-
-        [HttpPost]
-        public async Task<IActionResult> Login(LoginDto dto)
-        {
-            var client = _httpClientFactory.CreateClient();
-            var json = JsonConvert.SerializeObject(dto);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-            var response = await client.PostAsync("https://localhost:7028/api/auth/login", content);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                ModelState.AddModelError("", "Nieprawidłowa nazwa użytkownika lub hasło.");
-                return View(dto);
-            }
-
-            var responseContent = await response.Content.ReadAsStringAsync();
-            var tokenResponse = JsonConvert.DeserializeObject<TokenResponseDto>(responseContent);
-
-            HttpContext.Session.SetString("JWToken", tokenResponse.Token);
-            HttpContext.Session.SetString("Username", dto.Username);
-
-            return RedirectToAction("Index", "Home");
-        }
-
         public IActionResult Logout()
         {
             HttpContext.Session.Remove("JWToken");
             HttpContext.Session.Remove("Username");
-            return RedirectToAction("Index", "Home");
+            HttpContext.Session.Remove("UserRole");
+            return RedirectToAction("Login");
         }
 
         [HttpGet]
@@ -130,9 +148,9 @@ namespace WebFilm.Controllers
                 return RedirectToAction("Login");
 
             var client = _httpClientFactory.CreateClient();
-            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-            var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+            var handler = new JwtSecurityTokenHandler();
             var jwt = handler.ReadJwtToken(token);
             var userIdClaim = jwt.Claims.FirstOrDefault(c => c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier");
             if (userIdClaim == null)
@@ -145,7 +163,7 @@ namespace WebFilm.Controllers
                 return RedirectToAction("Login");
 
             var userContent = await response.Content.ReadAsStringAsync();
-            var user = Newtonsoft.Json.JsonConvert.DeserializeObject<AccountSettingsViewModel>(userContent);
+            var user = JsonConvert.DeserializeObject<AccountSettingsViewModel>(userContent);
 
             return View(user);
         }
@@ -171,10 +189,10 @@ namespace WebFilm.Controllers
             }
 
             var client = _httpClientFactory.CreateClient();
-            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
             var dto = new { NewEmail, CurrentPassword };
-            var json = Newtonsoft.Json.JsonConvert.SerializeObject(dto);
+            var json = JsonConvert.SerializeObject(dto);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
             var response = await client.PostAsync("https://localhost:7028/api/auth/change-email", content);
 
@@ -182,6 +200,7 @@ namespace WebFilm.Controllers
             {
                 HttpContext.Session.Remove("JWToken");
                 HttpContext.Session.Remove("Username");
+                HttpContext.Session.Remove("UserRole");
                 return RedirectToAction("Login");
             }
             else
@@ -199,23 +218,24 @@ namespace WebFilm.Controllers
                 return RedirectToAction("Login");
 
             var client = _httpClientFactory.CreateClient();
-            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
             var dto = new { NewUsername, CurrentPassword };
-            var json = Newtonsoft.Json.JsonConvert.SerializeObject(dto);
+            var json = JsonConvert.SerializeObject(dto);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
             var response = await client.PostAsync("https://localhost:7028/api/auth/change-username", content);
 
             if (response.IsSuccessStatusCode)
             {
                 var result = await response.Content.ReadAsStringAsync();
-                var obj = Newtonsoft.Json.Linq.JObject.Parse(result);
-                var newUsername = (string)obj["Username"];
+                var obj = JsonConvert.DeserializeObject<dynamic>(result);
+                var newUsername = (string)obj?.Username;
                 if (!string.IsNullOrEmpty(newUsername))
                     HttpContext.Session.SetString("Username", newUsername);
 
                 HttpContext.Session.Remove("JWToken");
                 HttpContext.Session.Remove("Username");
+                HttpContext.Session.Remove("UserRole");
                 return RedirectToAction("Login");
             }
             else
@@ -233,10 +253,10 @@ namespace WebFilm.Controllers
                 return RedirectToAction("Login");
 
             var client = _httpClientFactory.CreateClient();
-            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
             var dto = new { CurrentPassword, NewPassword };
-            var json = Newtonsoft.Json.JsonConvert.SerializeObject(dto);
+            var json = JsonConvert.SerializeObject(dto);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
             var response = await client.PostAsync("https://localhost:7028/api/auth/change-password", content);
 
@@ -244,6 +264,7 @@ namespace WebFilm.Controllers
             {
                 HttpContext.Session.Remove("JWToken");
                 HttpContext.Session.Remove("Username");
+                HttpContext.Session.Remove("UserRole");
                 return RedirectToAction("Login");
             }
             else
