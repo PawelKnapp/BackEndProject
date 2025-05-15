@@ -92,7 +92,6 @@ namespace WebFilm.Controllers
                 return View(model);
             }
 
-            // Automatyczne logowanie po rejestracji
             var loginDto = new LoginDto { Username = model.Username, Password = model.Password };
             var loginJson = JsonConvert.SerializeObject(loginDto);
             var loginContent = new StringContent(loginJson, Encoding.UTF8, "application/json");
@@ -102,7 +101,7 @@ namespace WebFilm.Controllers
             {
                 var loginResponseContent = await loginResponse.Content.ReadAsStringAsync();
                 var tokenObj = JsonConvert.DeserializeObject<dynamic>(loginResponseContent);
-                string token = tokenObj?.Token;
+                string token = tokenObj?.token ?? tokenObj?.Token;
 
                 if (!string.IsNullOrEmpty(token))
                 {
